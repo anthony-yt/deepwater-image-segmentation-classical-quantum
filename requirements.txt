@@ -1,0 +1,10 @@
+# Image Processing & Computer Vision
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+
+# Data Manipulation & Visualization
+pandas>=2.0.0
+matplotlib>=3.7.0
+ipywidgets>=8.0.0
+
+# Future dependencies (Models & Quantum) will be added in subsequent sprints.
