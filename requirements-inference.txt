@@ -1,0 +1,22 @@
+# Inference and visualization
+numpy>=1.24.0
+opencv-python-headless>=4.8.0
+matplotlib>=3.7.0
+pandas>=2.0.0
+pillow>=10.0.0
+tqdm>=4.66.0
+jupyter>=1.0.0
+ipywidgets>=8.0.0
+
+# MMSegmentation stacks are version-sensitive.
+# The official UWSegFormer repo currently states that it was built with
+# mmcv 1.5.3 and mmsegmentation 0.11.0:
+# https://github.com/SAWRJJ/UWSegFormer
+#
+# Prefer installing these inside a Colab/runtime dedicated to UWSegFormer, not
+# necessarily in the same local venv used for lightweight data preparation.
+#
+# Example, to adapt after confirming CUDA/PyTorch compatibility:
+# openmim
+# mmcv-full==1.5.3
+# mmsegmentation==0.11.0
