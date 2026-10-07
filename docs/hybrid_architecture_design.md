@@ -15,12 +15,12 @@ No se recomienda implementar CDGLU, PCSA, ACAF, la fusión tipo HRNet y priors S
 - Hosseini et al. proponen un encoder local basado en EfficientNet-B0 y un encoder global Swin-T simplificado. Alinean sus salidas a `32 × 32 × 256`, aplican cross-attention de tres cabezas y refinan con CBAM antes de decodificar [1, §§3.2-3.5]. Su ablación pasa de 87.5% mIoU para la rama Swin-T y 85.2% para la rama EFS-Net a 92.8% al combinarlas con una cabeza. Tres cabezas alcanzan 96.3% y el modelo completo reporta 98.44% [1, Tabla 3]. Esos números pertenecen a HOMOMO y no deben trasladarse al dataset del proyecto.
 - La presentación del proyecto resume el conflicto entre detalle local y trayectoria global, propone cross-attention de tres cabezas y sugiere ramas paralelas de alta resolución [2, diapositivas 3-5]. También plantea priors SAM para separar primer plano y fondo [2, diapositiva 6].
 - DMSNet combina CDGLU, PCSA y ACAF. PCSA refuerza rasgos locales y globales, mientras ACAF conecta el rasgo global con rasgos espaciales locales del decoder [3]. Por atribución correcta, ACAF pertenece a DMSNet, no a SP-UIQA.
-- SP-UIQA utiliza máscaras suaves de SAM generadas offline, fusión multiescala guiada por máscara y cross-attention espacial para modelar regiones [4]. El artículo es de evaluación de calidad, no de segmentación. Aquí solo inspira el protocolo de priors y robustez.
-- SegFormer MiT-B0 entrega cuatro escalas y un decoder MLP liviano. El baseline de `notebooks/5_segformer_mit_b0_baseline.ipynb` fija la comparación sin componentes especializados [5].
+- SP-UIQA utiliza máscaras suaves de SAM generadas offline, fusión multiescala guiada por máscara y cross-attention espacial para modelar regiones [4]. En este diseño se denomina **SMMF** al bloque adaptado de fusión multiescala guiada por máscara. El artículo es de evaluación de calidad, no de segmentación; SMMF se toma como inspiración y debe validarse mediante una ablación, no presentarse como un módulo de segmentación ya demostrado.
+- SegFormer MiT-B0 entrega cuatro escalas y un decoder MLP liviano. El baseline de `notebooks/5_segformer_mit_b0_baseline.ipynb` fija la comparación sin componentes especializados [5]. En Task 4.7 se evaluó como **baseline de encoder congelado**: se cargó el encoder preentrenado en ADE20K y se optimizó el decoder binario. No representa todavía un fine-tuning completo de MiT-B0.
 
 ### 2.1 Resultado experimental provisional de Task 4.7
 
-La comparación se realizó sobre las mismas cuatro imágenes de validación y el mismo manifest (SHA-256 `d279983b1ca63e8b4b54f49e008fadf94f84b17c65bc201d875ddae68fb980dc`). Se evaluó el checkpoint disponible con mejor mIoU de cada experimento; para SegFormer fue `iter_1500.pth`.
+La comparación se realizó sobre las mismas cuatro imágenes de validación y el mismo manifest (SHA-256 `d279983b1ca63e8b4b54f49e008fadf94f84b17c65bc201d875ddae68fb980dc`). Se evaluó el checkpoint disponible con mejor mIoU de cada experimento; para SegFormer fue `iter_1500.pth`. Estos resultados corresponden al protocolo provisional con encoder congelado y no deben confundirse con el reentrenamiento multisemilla de Task 4.8.
 
 | Métrica | SegFormer MiT-B0 | UWSegFormer | Delta SegFormer - UWS |
 |---|---:|---:|---:|
@@ -101,7 +101,7 @@ Ablaciones posteriores:
 - **CDGLU** en la ruta de contexto, antes de B3. Su pregunta experimental es si mejora invariancia ante brillo y escala.
 - **PCSA** sobre F3. Su pregunta es si mejora IoU de estructura sin elevar falsos positivos de fondo.
 - **ACAF** en los dos skip connections del decoder. Sustituye la suma ponderada por atención guiada por el rasgo global. DMSNet usa tres módulos ACAF; aquí se empieza con dos porque solo se conservan A1 y A2 [3].
-- **Fusión multiescala guiada por máscara**, inspirada en SP-UIQA. El nombre descriptivo se usa deliberadamente: la fuente consultada no confirma `SMMF` como acrónimo canónico [4].
+- **SMMF adaptado (fusión multiescala guiada por máscara)**, inspirado en SP-UIQA. Recibe las características A1, A2 y F3 junto con un prior SAM suave generado offline; alinea las escalas, modula cada nivel con la máscara redimensionada y concatena/proyecta el resultado antes del decoder. Se implementa después de demostrar el aporte del dual-encoder sin prior. Su ablación compara `sin prior`, `SMMF con prior correcto`, `prior perturbado` y `prior vacío`, para comprobar que la mejora no provenga de copiar la máscara SAM.
 
 ### 3.5 Pérdida
 
