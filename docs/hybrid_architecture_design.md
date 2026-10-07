@@ -18,6 +18,24 @@ No se recomienda implementar CDGLU, PCSA, ACAF, la fusión tipo HRNet y priors S
 - SP-UIQA utiliza máscaras suaves de SAM generadas offline, fusión multiescala guiada por máscara y cross-attention espacial para modelar regiones [4]. El artículo es de evaluación de calidad, no de segmentación. Aquí solo inspira el protocolo de priors y robustez.
 - SegFormer MiT-B0 entrega cuatro escalas y un decoder MLP liviano. El baseline de `notebooks/5_segformer_mit_b0_baseline.ipynb` fija la comparación sin componentes especializados [5].
 
+### 2.1 Resultado experimental provisional de Task 4.7
+
+La comparación se realizó sobre las mismas cuatro imágenes de validación y el mismo manifest (SHA-256 `d279983b1ca63e8b4b54f49e008fadf94f84b17c65bc201d875ddae68fb980dc`). Se evaluó el checkpoint disponible con mejor mIoU de cada experimento; para SegFormer fue `iter_1500.pth`.
+
+| Métrica | SegFormer MiT-B0 | UWSegFormer | Delta SegFormer - UWS |
+|---|---:|---:|---:|
+| IoU estructura | 0.767036 | 0.763267 | +0.003768 |
+| Dice estructura | 0.868161 | 0.865742 | +0.002419 |
+| Recall estructura | 0.767168 | 0.763284 | +0.003883 |
+| Especificidad de fondo | 0.999533 | 0.999940 | -0.000407 |
+| Boundary-F1@2px | 0.027464 | 0.021066 | +0.006398 |
+| Latencia mediana (ms) | 50.486 | 55.492 | -5.006 |
+| Parámetros (M) | 3.715 | 16.814 | -13.099 |
+
+En este split provisional, SegFormer obtiene una ventaja pequeña en IoU (+0.38 puntos porcentuales), Dice (+0.24 puntos) y recall (+0.39 puntos), además de una mejora mayor en Boundary-F1@2px (+0.64 puntos). También reduce la latencia mediana aproximadamente 9.0% y usa 77.9% menos parámetros. UWSegFormer conserva una ventaja marginal en precisión y especificidad de fondo, inferior a 0.05 puntos porcentuales.
+
+Por tanto, la complejidad adicional de UWSegFormer no queda justificada por esta evaluación. Esto no demuestra superioridad general de SegFormer: `n=4` es insuficiente para inferencia estadística y el ground truth es provisional. Task 4.8 debe repetir la comparación con las anotaciones finales y agrupación por video. Para Sprint 5, SegFormer pasa a ser también un control de eficiencia obligatorio: la arquitectura híbrida debe compararse tanto contra UWSegFormer solo como contra este baseline ligero.
+
 ## 3. Arquitectura propuesta para Sprint 5
 
 ### 3.1 Entradas y tensores
@@ -154,6 +172,7 @@ Endpoint primario:
 
 - `Δ IoU_structure >= +2.0` puntos porcentuales frente a UWSegFormer.
 - El límite inferior del intervalo bootstrap 95%, remuestreado por video/grupo, debe ser mayor que 0.
+- La variante también debe superar el IoU de SegFormer MiT-B0 bajo el mismo protocolo; superar únicamente a UWSegFormer no basta, porque SegFormer fue el mejor baseline provisional y es mucho más eficiente.
 
 Condiciones simultáneas:
 
