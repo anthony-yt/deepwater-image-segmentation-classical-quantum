@@ -7,4 +7,7 @@ pandas>=2.0.0
 matplotlib>=3.7.0
 ipywidgets>=8.0.0
 
+# Data Augmentation
+albumentations==2.0.8
+
 # Future dependencies (Models & Quantum) will be added in subsequent sprints.
