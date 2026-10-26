@@ -1,9 +1,11 @@
 # Project specific - Deepwater Image Segmentation
 # Ignore raw and processed data directories
-data/
-dataset/
-Dataset_Processed/
-Under_Water_Dataset/
+/data/*
+!/data/README.md
+/dataset/
+/Dataset_Processed/
+/Under_Water_Dataset/
+SUIM
 
 # Ignore media files to prevent accidental large uploads
 *.mp4
@@ -18,3 +20,10 @@ Under_Water_Dataset/
 *.pth
 *.h5
 *.onnx
+
+.venv
+.DS_Store
+/external/
+/checkpoints/
+__pycache__/
+*.py[cod]
