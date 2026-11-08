@@ -1,10 +1,10 @@
 # Protocolo de evaluación comparativa (Task 4.8)
 
-**Estado: propuesta de Ariana, pendiente de confirmación de Dayana.**
-Hasta que las dos lo acepten no hay protocolo, porque afecta igual a las 35 corridas del U-Net y
-a las 70 de SegFormer y UWSegFormer.
+**Estado: ACORDADO. Dayana confirmó las ocho decisiones el 2026-11-08, sin condiciones.**
+Rige para las corridas del U-Net (Ariana) y para las de SegFormer y UWSegFormer (Dayana, Task 5.4).
+Cualquier cambio posterior invalida las corridas ya hechas y se renegocia antes de volver a entrenar.
 
-Fecha de redacción: 2026-11-01.
+Fecha de redacción: 2026-11-01. Acordado y revisado contra Drive: 2026-11-08.
 
 ---
 
@@ -132,7 +132,9 @@ Motivo: es lo único que produce el resultado por video que pide el entregable, 
 protocolo que ya define la Task 5.4 de Dayana, así que no obliga a nadie a cambiar de plan.
 
 Un video con menos de 4 máscaras no tiene fold propio, pero sigue usándose como entrenamiento
-(parámetro `--min-masks` del generador).
+(parámetro `--min-masks` del generador). **Al 2026-11-08 Video7 no tiene ninguna máscara, así que
+hoy son 6 folds y 30 corridas** — ver «El conjunto real» en Precondiciones. Los 7 folds siguen
+siendo el objetivo acordado; una tabla con 6 columnas es un resultado parcial, no el entregable.
 
 ### 6. Semillas
 
@@ -197,7 +199,7 @@ Lo genera Anthony, que es el dueño de las etiquetas. Lo valida Dayana con el me
 
 ## Reparto del trabajo
 
-- **Ariana** entrena el U-Net: 7 folds × 5 semillas = 35 corridas.
+- **Ariana** entrena el U-Net: 7 folds × 5 semillas = 35 corridas (hoy 6 × 5 = 30, falta Video7).
 - **Dayana** no entrena para la 4.8. Reutiliza las corridas de su Task 5.4 para SegFormer y
   UWSegFormer, que son 70 bajo este mismo protocolo.
 
@@ -229,15 +231,43 @@ fijado contra una línea base supuesta de 0,72, que es la de Video1 y de ningún
 
 ## Precondiciones
 
-| Precondición | Estado al 2026-11-01 | Responsable |
+| Precondición | Estado al 2026-11-08 | Responsable |
 |---|---|---|
-| Máscaras curadas de la Task 5.1 | **28 de 68** (Video1 ×20, Video6 ×8) | Anthony |
+| Máscaras curadas de la Task 5.1 | **60 de 68** — falta Video7 entero (×8) | Anthony |
 | Arnés de la Task 5.7 | hecho, en `feat/labelling-evaluation-tools`, sin mergear | Anthony |
 | `mmseg_pipes` regenerado desde `Test_Set_Curado` | no hecho | Anthony |
-| Manifiesto de folds con `sha256` | generador listo, falta ejecutarlo con las 68 | Anthony |
+| Manifiesto de folds con `sha256` | generador validado sobre las 60; falta la corrida oficial en Drive | Anthony |
 | Corridas de la Task 5.4 | no empezadas | Dayana |
 | Presupuesto de pasadas, vía corrida piloto | no decidido | Ariana y Dayana |
 | Bootstrap modelo contra modelo en el arnés | no hecho | Anthony |
+
+### El conjunto real al 2026-11-08
+
+Las 68 de la decisión 1 siguen siendo el objetivo, pero hoy hay 60 y **Video7 no tiene ninguna
+máscara**, así que no tiene fold propio: son **6 folds, no 7**, y 6 × 5 = **30 corridas por
+modelo** en lugar de 35. Medido con `build_fold_manifest` sobre `Test_Set_Curado`:
+
+| video | máscaras | peso en el conjunto | tamaño | línea base «todo estructura» |
+|---|---|---|---|---|
+| Video1 | 20 | 33,3 % | 640×360 | **0,7176** |
+| Video2 | 8 | 13,3 % | 640×360 | **0,9294** |
+| Video3 | 8 | 13,3 % | 640×360 | **0,7804** |
+| Video4 | 8 | 13,3 % | 640×360 | **0,7409** |
+| Video5 | 8 | 13,3 % | 640×360 | **0,7135** |
+| Video6 | 8 | 13,3 % | 480×360 | **0,0814** |
+| Video7 | 0 | — | — | sin fold |
+
+Folds: Video1 → 20 test / 40 train; los otros cinco → 8 test / 52 train.
+`sha256` del manifiesto de validación: `7ecf8370ce2764a48a447803eeaa746ea55cdd212ac28103f670814f55b617dc`
+(provisional: el oficial se recalcula cuando entren las 8 de Video7).
+
+**Video2 es el hallazgo que hay que leer antes de la tabla.** Su línea base es **0,9294**: marcar
+todo el frame como estructura da IoU 0,93. Ningún modelo va a separarse de eso de forma
+distinguible, así que la columna de Video2 nacerá empatada por construcción, no por falta de
+calidad de los modelos. Al revés en Video6, con base 0,0814, donde casi cualquier cosa que
+aprenda algo mejora la base. Cinco de los seis videos tienen base por encima de 0,71: **el rango
+útil de la tabla es estrecho en casi todas las columnas**, y eso refuerza la decisión 4 — lo
+esperable es reportar empates.
 
 La cuarta precondición no es menor: `mmseg_pipes` se construye hoy desde
 `SAM_Masks_Frames_CLAHE`, y la Task 4.3 mide esas máscaras contra el ground truth curado:
