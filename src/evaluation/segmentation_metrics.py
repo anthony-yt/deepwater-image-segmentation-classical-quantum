@@ -68,17 +68,21 @@ def video_of(frame_id: str) -> str:
 def evaluate(preds: dict, gts: dict, tol: int = 2, n_boot: int = 2000, seed: int = 0):
     """preds, gts: {frame_id: mask}. Returns (per_frame, per_video).
 
-    per_frame: the 5 metrics for the model and for the 'everything is structure' baseline.
+    per_frame: the 5 metrics for the model and for the 'everything is structure' baseline, plus
+    `empty_gt` (the ground truth has no structure) and `pred_pct` (share of pixels predicted as structure).
     per_video: mean per metric, baseline IoU, model - baseline IoU, and 95 % bootstrap intervals over
     frames (of the model IoU and of the paired IoU difference). Frames of one video are correlated,
     so the intervals are a guide, not a test.
+    Frames whose ground truth is empty are reported apart (`n_empty`, `empty_fp_pct`: mean share of
+    pixels wrongly predicted as structure there) and left out of the means, so they do not move the IoU.
     """
     ids = sorted(set(preds) & set(gts))
     if not ids:
         raise ValueError("preds and gts share no frame id")
     rows = []
     for fid in ids:
-        row = {"frame_id": fid, "video": video_of(fid)}
+        row = {"frame_id": fid, "video": video_of(fid), "empty_gt": not binarize(gts[fid]).any(),
+               "pred_pct": 100 * binarize(preds[fid]).mean()}
         row.update(frame_metrics(preds[fid], gts[fid], tol))
         base = frame_metrics(np.ones_like(binarize(gts[fid])), gts[fid], tol)
         row.update({f"base_{k}": v for k, v in base.items()})
@@ -92,8 +96,9 @@ def evaluate(preds: dict, gts: dict, tol: int = 2, n_boot: int = 2000, seed: int
         means = rng.choice(values, size=(n_boot, len(values)), replace=True).mean(axis=1)
         return np.percentile(means, [2.5, 97.5])
 
+    empty = per_frame[per_frame["empty_gt"]].groupby("video")["pred_pct"].agg(n_empty="count", empty_fp_pct="mean")
     out = []
-    for video, g in per_frame.groupby("video"):
+    for video, g in per_frame[~per_frame["empty_gt"]].groupby("video"):
         lo, hi = boot(g["iou"])
         dlo, dhi = boot(g["iou"] - g["base_iou"])
         out.append({
@@ -104,13 +109,18 @@ def evaluate(preds: dict, gts: dict, tol: int = 2, n_boot: int = 2000, seed: int
             "iou_ci_low": lo, "iou_ci_high": hi,
             "diff_ci_low": dlo, "diff_ci_high": dhi,
         })
-    return per_frame, pd.DataFrame(out)
+    per_video = pd.DataFrame(out, columns=None if out else ["video", "n_frames"] + METRICS + ["base_iou"])
+    per_video = per_video.merge(empty.reset_index(), on="video", how="outer").sort_values("video", ignore_index=True)
+    per_video["n_empty"] = per_video["n_empty"].fillna(0).astype(int)
+    per_video["n_frames"] = per_video["n_frames"].fillna(0).astype(int)
+    return per_frame, per_video
 
 
 def across_seeds(per_frame_by_seed: dict) -> pd.DataFrame:
     """per_frame_by_seed: {seed: per_frame DataFrame}. Mean and sd over seeds of each video's mean."""
     per_seed = pd.concat(
-        [df.groupby("video")[METRICS + ["base_iou"]].mean().assign(seed=s) for s, df in per_frame_by_seed.items()])
+        [df[~df["empty_gt"]].groupby("video")[METRICS + ["base_iou"]].mean().assign(seed=s)
+         for s, df in per_frame_by_seed.items()])
     grouped = per_seed.groupby("video")[METRICS + ["base_iou"]]
     table = grouped.mean().join(grouped.std(ddof=1), rsuffix="_sd")
     table["n_seeds"] = per_seed.groupby("video")["seed"].nunique()
