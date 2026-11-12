@@ -1,0 +1,44 @@
+{
+  "mode": "pilot",
+  "protocol_confirmed": false,
+  "models": [
+    "segformer",
+    "uwsegformer"
+  ],
+  "seeds": [
+    0
+  ],
+  "folds": [
+    "Video1"
+  ],
+  "expected_videos": [
+    "Video1",
+    "Video2",
+    "Video3",
+    "Video4",
+    "Video5",
+    "Video6"
+  ],
+  "passes": null,
+  "batch_size": 2,
+  "learning_rate": 6e-05,
+  "freeze_backbone": true,
+  "manifest": "/content/drive/MyDrive/Under_Water_Dataset/Dataset_Processed/Seleccion/folds_4_8.csv",
+  "manifest_sha256": null,
+  "frames_dir": "/content/drive/MyDrive/Under_Water_Dataset/Dataset_Processed/Frames_CLAHE",
+  "masks_dir": "/content/drive/MyDrive/Under_Water_Dataset/Dataset_Processed/Test_Set_Curado",
+  "results_dir": "/content/drive/MyDrive/Under_Water_Dataset/Dataset_Processed/resultados_4_8",
+  "uws_root": "/content/UWSegFormer",
+  "checkpoints": {
+    "segformer": "/content/segformer_mit_b0_ade20k.pth",
+    "uwsegformer": "/content/drive/MyDrive/Under_Water_Dataset/checkpoints/uws_SUIM.pth"
+  },
+  "expected_counts": {
+    "Video1": 24,
+    "Video2": 8,
+    "Video3": 8,
+    "Video4": 8,
+    "Video5": 8,
+    "Video6": 8
+  }
+}

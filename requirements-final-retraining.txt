@@ -1,0 +1,14 @@
+# Install inside the Python 3.8 legacy uws environment AFTER Torch/MMCV (not local .venv).
+numpy==1.23.5
+pandas==1.5.3
+Pillow==10.4.0
+opencv-python-headless==4.7.0.72
+matplotlib==3.7.5
+scipy==1.10.1
+timm==0.4.12
+kornia==0.6.12
+terminaltables==3.1.10
+yapf==0.40.1
+addict==2.4.0
+packaging==24.2
+ipython==8.12.3
