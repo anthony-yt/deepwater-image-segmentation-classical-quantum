@@ -1,0 +1,42 @@
+{
+  "mode": "pilot",
+  "protocol_confirmed": true,
+  "models": [
+    "unet"
+  ],
+  "seeds": [
+    0
+  ],
+  "folds": [
+    "Video1"
+  ],
+  "expected_videos": [
+    "Video1",
+    "Video2",
+    "Video3",
+    "Video4",
+    "Video5",
+    "Video6"
+  ],
+  "expected_counts": {
+    "Video1": 22,
+    "Video2": 8,
+    "Video3": 8,
+    "Video4": 8,
+    "Video5": 8,
+    "Video6": 8
+  },
+  "passes": 20,
+  "batch_size": 2,
+  "learning_rate": 0.0001,
+  "loss": "ce_dice",
+  "attention": false,
+  "scheduler": "cosine",
+  "augment": false,
+  "img_size": 512,
+  "manifest": "/content/drive/MyDrive/Under_Water_Dataset/Dataset_Processed/Seleccion/folds_4_8.csv",
+  "manifest_sha256": "ebebc379148f82bb8f914a4e1f8310a5de4acdab9a93c62f3a645db51d88106a",
+  "frames_dir": "/content/drive/MyDrive/Under_Water_Dataset/Dataset_Processed/Frames_CLAHE",
+  "masks_dir": "/content/drive/MyDrive/Under_Water_Dataset/Dataset_Processed/Test_Set_Curado",
+  "results_dir": "/content/drive/MyDrive/Under_Water_Dataset/Dataset_Processed/resultados_4_8_p20"
+}
