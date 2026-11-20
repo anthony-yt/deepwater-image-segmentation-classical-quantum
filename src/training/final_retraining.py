@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -78,8 +79,17 @@ def validate_manifest(path, expected_hash, frames_dir, masks_dir):
 
     records = []
     for row in df.drop_duplicates('frame_id').sort_values('frame_id').itertuples():
-        candidates = [p for ext in ('.jpg', '.jpeg', '.png', '.JPG', '.PNG')
-                      if (p := Path(frames_dir) / f'{row.frame_id}{ext}').is_file()]
+        seen, candidates = set(), []
+        for ext in ('.jpg', '.jpeg', '.png', '.JPG', '.PNG'):
+            path = Path(frames_dir) / f'{row.frame_id}{ext}'
+            if not path.is_file():
+                continue
+            # Windows no distingue mayúsculas: .jpg y .JPG son el mismo archivo y sin deduplicar
+            # parecen dos candidatos, así que el preflight no corre fuera de Colab.
+            key = os.path.normcase(str(path.resolve()))
+            if key not in seen:
+                seen.add(key)
+                candidates.append(path)
         mask_path = Path(masks_dir) / f'{row.frame_id}_mask.png'
         if len(candidates) != 1 or not mask_path.is_file():
             raise ValueError(f'Par ausente/ambiguo: {row.frame_id}; no se omiten frames')
