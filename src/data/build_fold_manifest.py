@@ -19,6 +19,13 @@ Produce dos archivos:
 
 El sha256 se calcula sobre los bytes del CSV ya escrito, de modo que cualquiera puede verificarlo
 con `sha256sum` sin volver a ejecutar este script.
+
+Si el manifiesto ya existe y ya hay corridas que registraron su sha256, no se regenera: se
+describe con `--describe`, que deja el CSV intacto, escribe el `.meta.json` que falta y lista las
+mascaras de la carpeta que el manifiesto no incluye.
+
+    python -m src.data.build_fold_manifest --describe \\
+        --masks-dir ".../Test_Set_Curado" --out ".../Seleccion/folds_4_8.csv"
 """
 from __future__ import annotations
 
@@ -93,6 +100,25 @@ def sha256_of(path: Path) -> str:
     return digest.hexdigest()
 
 
+def read_existing_folds(path: Path) -> pd.DataFrame:
+    """Lee un manifiesto ya acordado y comprueba lo minimo antes de describirlo."""
+    if not path.is_file() or path.stat().st_size == 0:
+        raise SystemExit(f"{path} no existe o esta vacio; no hay nada que describir")
+    folds = pd.read_csv(path, dtype=str, keep_default_na=False)
+    faltan = {"fold", "frame_id", "video", "split"} - set(folds.columns)
+    if faltan:
+        raise SystemExit(f"al manifiesto le faltan columnas: {sorted(faltan)}")
+    if folds.duplicated(["fold", "frame_id"]).any():
+        raise SystemExit("hay filas (fold, frame_id) duplicadas")
+    ids = set(folds.frame_id)
+    for fold, filas in folds.groupby("fold"):
+        if set(filas.frame_id) != ids:
+            raise SystemExit(f"el fold {fold} no cubre los mismos frames que los demas")
+        if not ((filas.video == fold) == (filas.split == "test")).all():
+            raise SystemExit(f"el fold {fold} mezcla videos entre train y test")
+    return folds
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -101,14 +127,28 @@ def main() -> None:
     parser.add_argument("--out", required=True, type=Path, help="CSV de salida")
     parser.add_argument("--min-masks", default=4, type=int,
                         help="minimo de mascaras para que un video tenga fold propio (def. 4)")
+    parser.add_argument("--describe", action="store_true",
+                        help="no reescribe el CSV: describe el manifiesto que ya existe")
     args = parser.parse_args()
 
     masks = collect_masks(args.masks_dir)
-    folds = build_folds(masks, args.min_masks)
+    fuera = []
 
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    # line_terminator fijo: el sha256 debe ser el mismo en Windows y en Colab.
-    folds.to_csv(args.out, index=False, lineterminator="\n")
+    if args.describe:
+        folds = read_existing_folds(args.out)
+        en_manifiesto = set(folds.frame_id)
+        sobran = en_manifiesto - set(masks.frame_id)
+        if sobran:
+            raise SystemExit(f"el manifiesto nombra frames sin mascara en {args.masks_dir}: "
+                             f"{sorted(sobran)[:5]}")
+        fuera = sorted(set(masks.frame_id) - en_manifiesto)
+        masks = masks[masks.frame_id.isin(en_manifiesto)].reset_index(drop=True)
+    else:
+        folds = build_folds(masks, args.min_masks)
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        # line_terminator fijo: el sha256 debe ser el mismo en Windows y en Colab.
+        folds.to_csv(args.out, index=False, lineterminator="\n")
+
     checksum = sha256_of(args.out)
 
     por_video = masks.groupby("video").agg(
@@ -121,6 +161,7 @@ def main() -> None:
 
     meta = {
         "generado": str(date.today()),
+        "modo": "describe" if args.describe else "generado",
         "masks_dir": str(args.masks_dir),
         "csv": args.out.name,
         "sha256": checksum,
@@ -128,6 +169,7 @@ def main() -> None:
         "n_folds": int(folds.fold.nunique()),
         "min_masks_por_fold": args.min_masks,
         "protocolo": "docs/protocolo_evaluacion.md",
+        "mascaras_en_la_carpeta_fuera_del_manifiesto": fuera,
         "por_video": {f"Video{v}": {
             "n_mascaras": int(r.n_mascaras),
             "peso_en_el_conjunto": round(float(r.peso_en_el_conjunto), 4),
@@ -137,6 +179,13 @@ def main() -> None:
     }
     meta_path = args.out.with_suffix(".meta.json")
     meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    if args.describe:
+        print(f"\nmanifiesto intacto: {args.out}")
+        if fuera:
+            print(f"{len(fuera)} mascaras de la carpeta NO estan en el manifiesto: {fuera[:3]}"
+                  f"{' ...' if len(fuera) > 3 else ''}")
+            print("si deben entrar, hay que regenerar el manifiesto y renegociar el sha256.")
 
     print(f"\n{len(masks)} mascaras | {folds.fold.nunique()} folds | {len(folds)} filas")
     print(f"\n{por_video.round(4).to_string()}")
