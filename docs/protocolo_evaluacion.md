@@ -50,6 +50,8 @@ medición hace que cualquier diferencia observada pueda venir de la medición y 
 ### 1. Qué máscaras entran al conjunto
 
 Cuando la Task 5.1 termine habrá **68 máscaras**: 20 de Video1 y 8 de cada uno de los otros seis.
+(Terminó el 2026-11-10 y salieron 70, de las que el manifiesto acordado usa 62: ver «El conjunto
+real al 2026-11-19» en Precondiciones.)
 
 **Decisión: se usan las 68 tal cual, y la tabla final reporta el peso de cada video en el
 conjunto de entrenamiento de cada fold.**
@@ -97,10 +99,15 @@ corridas actuales usan 2000 iteraciones con `samples_per_gpu = 2`). Para un fold
 pasadas = iteraciones × samples_per_gpu / N
 ```
 
-**Pendiente abierto:** el valor del presupuesto no está decidido. Sale de una corrida piloto que
-debe hacerse **después** de regenerar las etiquetas. El U-Net convergía en la época 1 sobre las
-máscaras SAM, pero eso era un artefacto de esas etiquetas (ver Task 4.2), así que el número no se
-puede heredar.
+**Estado al 2026-11-19: el piloto ya existe y apunta a 20 pasadas.** Dayana corrió el fold Video1
+con 1 y con 20 pasadas (ver «El piloto de Dayana» en Precondiciones): de 1 a 20, SegFormer gana
+0,45 de IoU, y con 20 UWSegFormer es el único que supera la línea base. 20 es el valor con el que
+corre el piloto del U-Net, para comparar en el mismo punto.
+
+Lo que todavía no está cerrado es si 20 es el presupuesto **final**: nadie ha comprobado que la
+curva se aplane ahí, y subirlo cambia la tabla de los tres modelos a la vez. Eso se decide con los
+tres pilotos delante, no modelo por modelo. El U-Net convergía en la época 1 sobre las máscaras
+SAM, pero eso era un artefacto de esas etiquetas (ver Task 4.2), así que ese número no se hereda.
 
 ### 4. Regla de empate
 
@@ -132,9 +139,11 @@ Motivo: es lo único que produce el resultado por video que pide el entregable, 
 protocolo que ya define la Task 5.4 de Dayana, así que no obliga a nadie a cambiar de plan.
 
 Un video con menos de 4 máscaras no tiene fold propio, pero sigue usándose como entrenamiento
-(parámetro `--min-masks` del generador). **Al 2026-11-08 Video7 no tiene ninguna máscara, así que
-hoy son 6 folds y 30 corridas** — ver «El conjunto real» en Precondiciones. Los 7 folds siguen
-siendo el objetivo acordado; una tabla con 6 columnas es un resultado parcial, no el entregable.
+(parámetro `--min-masks` del generador). **Al 2026-11-19 Video7 ya tiene sus 8 máscaras, pero el
+manifiesto acordado no las incluye, así que son 6 folds y 30 corridas** — ver «El conjunto real»
+en Precondiciones. Los 7 folds siguen siendo el objetivo; una tabla con 6 columnas es un resultado
+parcial, no el entregable, y cerrar esa séptima columna cuesta un hash nuevo y repetir las 30
+corridas, así que se decide una sola vez y al final.
 
 ### 6. Semillas
 
@@ -164,6 +173,13 @@ se traducen la una a la otra a posteriori.
 **Hueco conocido:** el arnés da intervalo bootstrap emparejado para *modelo contra línea base*,
 pero no para *modelo contra modelo*, que es lo que la regla de empate necesita como desempate. Es
 un añadido pequeño a `segmentation_metrics.py` y corresponde pedírselo a Anthony.
+
+**Versión del arnés, 2026-11-19.** Vale la del 2026-11-10 (commit `50661fb`), que aparta los
+frames con ground truth vacío de las medias por video en vez de promediarlos. La rama
+`feat/final-retraining-segformers` lleva una copia del 2026-10-25, diez líneas más corta: hoy no
+cambia ningún número porque ninguna de las 70 máscaras está vacía, pero son dos versiones del
+mismo archivo compartido en dos ramas y hay que reconciliarlas antes de mergear. En
+`feat/unet-final-runs` ya está la del 10 de noviembre.
 
 ---
 
@@ -241,25 +257,61 @@ fijado contra una línea base supuesta de 0,72, que es la de Video1 y de ningún
 | Presupuesto de pasadas, vía corrida piloto | no decidido | Ariana y Dayana |
 | Bootstrap modelo contra modelo en el arnés | no hecho | Anthony |
 
-### El conjunto real al 2026-11-08
+### El conjunto real al 2026-11-19
 
-Las 68 de la decisión 1 siguen siendo el objetivo, pero hoy hay 60 y **Video7 no tiene ninguna
-máscara**, así que no tiene fold propio: son **6 folds, no 7**, y 6 × 5 = **30 corridas por
-modelo** en lugar de 35. Medido con `build_fold_manifest` sobre `Test_Set_Curado`:
+**La Task 5.1 terminó: hay 70 máscaras curadas**, 22 de Video1 y 8 de cada uno de Video2 a
+Video7. Son dos más que las 68 de la decisión 1.
 
-| video | máscaras | peso en el conjunto | tamaño | línea base «todo estructura» |
+**El manifiesto acordado congela 62 de esas 70 y deja fuera las 8 de Video7**, que se etiquetaron
+el 2026-11-10, cuatro días antes de que el manifiesto se generara. No se regenera: su `sha256` ya
+está registrado en las corridas piloto de Dayana, y cambiarlo las invalidaría. Son **6 folds y
+6 × 5 = 30 corridas por modelo**. Video7 entra en una renegociación posterior, con hash nuevo y
+repitiendo las corridas.
+
+Manifiesto oficial, descrito con `build_fold_manifest --describe` (que no lo reescribe):
+
+| video | máscaras | peso en el conjunto | tamaño | línea base «todo estructura» | margen disponible |
+|---|---|---|---|---|---|
+| Video1 | 22 | 35,5 % | 640×360 | **0,7409** | 0,259 |
+| Video2 | 8 | 12,9 % | 640×360 | **0,9294** | 0,071 |
+| Video3 | 8 | 12,9 % | 640×360 | **0,7804** | 0,220 |
+| Video4 | 8 | 12,9 % | 640×360 | **0,7409** | 0,259 |
+| Video5 | 8 | 12,9 % | 640×360 | **0,7135** | 0,287 |
+| Video6 | 8 | 12,9 % | 480×360 | **0,0814** | 0,919 |
+| Video7 | 8 | fuera del manifiesto | 640×360 | 0,8909 | — |
+
+Folds: Video1 → 22 test / 40 train; los otros cinco → 8 test / 54 train.
+`sha256` oficial: `ebebc379148f82bb8f914a4e1f8310a5de4acdab9a93c62f3a645db51d88106a`.
+
+### Incidencia del manifiesto, 2026-11-19
+
+`Seleccion/folds_4_8.csv` estaba en **0 bytes**, y el contenido real solo existía en las copias
+`folds_4_8 (1).csv`, `(2)`, `(3)` y `folds_4_8.csv.pending`, las cuatro idénticas y con el hash de
+arriba — el mismo que registraron las corridas piloto. Se restauró el archivo oficial desde una de
+esas copias y se generó el `folds_4_8.meta.json` que faltaba. Las copias numeradas siguen ahí y
+conviene borrarlas: un día alguien va a leer la equivocada.
+
+### El piloto de Dayana, 2026-11-12
+
+Dos corridas en el fold Video1 con semilla 0, en `resultados_4_8/pilot` (1 pasada) y
+`resultados_4_8_p20/pilot` (20 pasadas). La línea base de Video1 es 0,7409:
+
+| modelo | pasadas | IoU | contra la línea base | F1 de borde |
 |---|---|---|---|---|
-| Video1 | 20 | 33,3 % | 640×360 | **0,7176** |
-| Video2 | 8 | 13,3 % | 640×360 | **0,9294** |
-| Video3 | 8 | 13,3 % | 640×360 | **0,7804** |
-| Video4 | 8 | 13,3 % | 640×360 | **0,7409** |
-| Video5 | 8 | 13,3 % | 640×360 | **0,7135** |
-| Video6 | 8 | 13,3 % | 480×360 | **0,0814** |
-| Video7 | 0 | — | — | sin fold |
+| SegFormer | 1 | 0,268 | −0,473 | 0,015 |
+| UWSegFormer | 1 | 0,683 | −0,058 | 0,025 |
+| SegFormer | 20 | 0,719 | −0,021 | 0,026 |
+| UWSegFormer | 20 | **0,865** | **+0,124** | 0,075 |
 
-Folds: Video1 → 20 test / 40 train; los otros cinco → 8 test / 52 train.
-`sha256` del manifiesto de validación: `7ecf8370ce2764a48a447803eeaa746ea55cdd212ac28103f670814f55b617dc`
-(provisional: el oficial se recalcula cuando entren las 8 de Video7).
+Tres lecturas. **El presupuesto es la variable que más mueve la tabla**: de 1 a 20 pasadas,
+SegFormer gana 0,45 de IoU. **Con 20 pasadas solo UWSegFormer le gana a marcar todo el frame**;
+SegFormer sigue 0,021 por debajo, el mismo empate con la constante que la Task 4.2 encontró en el
+U-Net. Y **el F1 de borde es malísimo en los cuatro casos** (0,015 a 0,075 con `tol = 2`): los
+modelos aciertan el relleno y no el contorno, que es justo lo que el entregable necesita para
+reconocer estructuras.
+
+De ahí sale el valor de `PASADAS` para el piloto del U-Net: **20**, el mismo, para que la
+comparación en Video1 sea directa.
 
 **Video2 es el hallazgo que hay que leer antes de la tabla.** Su línea base es **0,9294**: marcar
 todo el frame como estructura da IoU 0,93. Ningún modelo va a separarse de eso de forma
@@ -283,5 +335,11 @@ compararía tres modelos sobre ruido.
   constante y por qué el split actual no mide generalización.
 - `notebooks/2_3_sam_mask_audit.ipynb` — Task 4.3, estado de las máscaras SAM de 3 puntos.
 - `src/evaluation/segmentation_metrics.py` — Task 5.7, el arnés.
-- `src/data/build_fold_manifest.py` — generador del manifiesto descrito arriba.
+- `src/data/build_fold_manifest.py` — generador del manifiesto descrito arriba; `--describe` lo
+  documenta sin reescribirlo, para un manifiesto cuyo hash ya está en uso.
+- `src/training/final_retraining.py` — pipeline de SegFormer y UWSegFormer (Dayana), y
+  `aggregate_shared_results`, que es lo que publica la tabla de los tres modelos.
+- `src/training/unet_final.py` — el lado del U-Net del mismo contrato, con
+  `configs/final_retraining_unet.example.json`.
+- `notebooks/3_4_final_retraining.ipynb` — conductor de las corridas del U-Net y de la tabla.
 - `docs/taxonomia_errores_5_13.md` — taxonomía de causas para el análisis de errores conjunto.
